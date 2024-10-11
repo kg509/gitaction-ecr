@@ -1,0 +1,8 @@
+# 대상 경로 (상대 경로로 저장. 수정할 필요가 없습니다.)
+target_paths=("./app/" "./manifest/")
+
+# 리포지토리 주소 (SSH 양식으로 작성합니다. 대상 경로와 매핑되도록 순서를 준수해서, 아래에 실제 환경에 맞는 값을 대입하세요.)
+repo_addr=(
+  "git@github.com:OWNER_NAME_HERE/APP_REPO_NAME_HERE.git"
+  "git@github.com:OWNER_NAME_HERE/MANIFEST_REPO_NAME_HERE.git"
+)

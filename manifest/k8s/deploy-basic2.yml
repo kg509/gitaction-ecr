@@ -1,0 +1,243 @@
+apiVersion: apps/v1 
+kind: Deployment      # 오브젝트 정의
+metadata:
+  name: kkr-deploy  # Deployment 이름 ---> 안 바꿔도 되는데 그냥 식별하기 위해 넣어주는 것
+  labels:
+    app: kkr
+spec:
+  replicas: 2
+  selector: 
+    matchLabels: 
+      app: kkr
+  template:
+    metadata:
+      labels:
+        app: kkr
+    spec:
+      containers: 
+        - name: kkr
+          image: 339712722610.dkr.ecr.ap-northeast-2.amazonaws.com/my-app-repo:9f92022
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              memory: "500Mi"
+              cpu: "500m"
+          envFrom:                         # ConfigMap을 환경 변수로 연결
+            - configMapRef:
+                name: db-config            # ConfigMap 이름 지정
+      imagePullSecrets:
+        - name: gitlab-registry-secret
+
+
+
+# kyeongrokkim/kube_boot:latest
+
+# 자동완성 디플로이먼트
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: myapp
+# spec:
+#   selector:
+#     matchLabels:
+#       app: myapp
+#   template:
+#     metadata:
+#       labels:
+#         app: myapp
+#     spec:
+#       containers:
+#       - name: myapp
+#         image: 339712722610.dkr.ecr.ap-northeast-2.amazonaws.com/my-app-repo:9f92022
+#         resources:
+#           limits:
+#             memory: "128Mi"
+#             cpu: "500m"
+#         ports:
+#         - containerPort: <Port>
+
+# -------------------------------------------------------------------------------------------------------------------------------------------
+
+# apply 해보면 이렇게 나옴
+
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl apply -f ~/kube-workspace/deployments/
+# deployment.apps/deploy-basic created
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl get deployment
+# NAME           READY   UP-TO-DATE   AVAILABLE   AGEnt
+# deploy-basic   5/5     5            5           19s
+# [ec2-user@ip-172-28-10-171 ~]$ getr
+# NAME                      DESIRED   CURRENT   READY   AGE   CONTAINERS       IMAGES         SELECTOR
+# deploy-basic-8555f74595   5         5         5       34s   container-name   nginx:latest   name=pod-label,pod-template-hash=8555f74595
+# [ec2-user@ip-172-28-10-171 ~]$ getp
+# NAME                            READY   STATUS    RESTARTS   AGE   IP              NODE                                               NOMINATED NODE   READINESS GATES
+# deploy-basic-8555f74595-2d595   1/1     Running   0          42s   172.28.11.163   ip-172-28-11-213.ap-northeast-2.compute.internal   <none>           <none>
+# deploy-basic-8555f74595-ch2z6   1/1     Running   0          42s   172.28.31.73    ip-172-28-31-97.ap-northeast-2.compute.internal    <none>           <none>
+# deploy-basic-8555f74595-rswrj   1/1     Running   0          42s   172.28.11.141   ip-172-28-11-213.ap-northeast-2.compute.internal   <none>           <none>
+# deploy-basic-8555f74595-s6vn6   1/1     Running   0          42s   172.28.31.65    ip-172-28-31-97.ap-northeast-2.compute.internal    <none>           <none>
+# deploy-basic-8555f74595-xwr86   1/1     Running   0          42s   172.28.31.149   ip-172-28-31-97.ap-northeast-2.compute.internal    <none>           <none>
+
+
+
+# -------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+# replicas 바꾸고 describe하고
+
+# [ec2-user@ip-172-28-10-171 ~]$ getd
+# NAME           READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS       IMAGES         SELECTOR
+# deploy-basic   3/3     3            3           28m   container-name   nginx:latest   name=pod-label
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl scale deploy deploy-basic --replicas 5
+# deployment.apps/deploy-basic scaled
+# [ec2-user@ip-172-28-10-171 ~]$ getd
+# NAME           READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS       IMAGES         SELECTOR
+# deploy-basic   5/5     5            5           28m   container-name   nginx:latest   name=pod-label
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl describe deploy
+# Name:                   deploy-basic
+# Namespace:              default
+# CreationTimestamp:      Wed, 24 Jul 2024 06:51:00 +0000
+# Labels:                 <none>
+# Annotations:            deployment.kubernetes.io/revision: 1
+# Selector:               name=pod-label
+# Replicas:               5 desired | 5 updated | 5 total | 5 available | 0 unavailable
+# StrategyType:           RollingUpdate
+# MinReadySeconds:        0
+# RollingUpdateStrategy:  25% max unavailable, 25% max surge
+# Pod Template:
+#   Labels:  name=pod-label
+#   Containers:
+#    container-name:
+#     Image:      nginx:latest
+#     Port:       80/TCP
+#     Host Port:  0/TCP
+#     Limits:
+#       cpu:         200m
+#       memory:      200Mi
+#     Environment:   <none>
+#     Mounts:        <none>
+#   Volumes:         <none>
+#   Node-Selectors:  <none>
+#   Tolerations:     <none>
+# Conditions:
+#   Type           Status  Reason
+#   ----           ------  ------
+#   Progressing    True    NewReplicaSetAvailable
+#   Available      True    MinimumReplicasAvailable
+# OldReplicaSets:  <none>
+# NewReplicaSet:   deploy-basic-8555f74595 (5/5 replicas created)
+# Events:
+#   Type    Reason             Age   From                   Message
+#   ----    ------             ----  ----                   -------
+#   Normal  ScalingReplicaSet  29m   deployment-controller  Scaled up replica set deploy-basic-8555f74595 to 3
+#   Normal  ScalingReplicaSet  22s   deployment-controller  Scaled up replica set deploy-basic-8555f74595 to 5 from 3
+
+
+
+# 파드를 만들 때 레플리카셋의 라벨을 가져다 씀
+
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl get rs --show-labels
+# NAME                      DESIRED   CURRENT   READY   AGE   LABELS
+# deploy-basic-8555f74595   5         5         5       32m   name=pod-label,pod-template-hash=8555f74595
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl get pod --show-labels
+# NAME                            READY   STATUS    RESTARTS   AGE     LABELS
+# deploy-basic-8555f74595-bs62l   1/1     Running   0          32m     name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-8555f74595-bzwjz   1/1     Running   0          32m     name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-8555f74595-l65bq   1/1     Running   0          3m45s   name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-8555f74595-mxm4v   1/1     Running   0          32m     name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-8555f74595-z9966   1/1     Running   0          3m45s   name=pod-label,pod-template-hash=8555f74595
+
+
+# Rollout
+# template 에 env: prod를 추가함
+# 이렇게 되면 레플리카셋의 숫자를 줄여버리고 새로운 레플리카셋을 만들어버림
+
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl apply -f ~/kube-workspace/deployments/
+# deployment.apps/deploy-basic configured
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl get rs --show-labels
+# NAME                      DESIRED   CURRENT   READY   AGE     LABELS
+# deploy-basic-7c74db56b5   3         3         3       2m52s   env=prod,name=pod-label,pod-template-hash=7c74db56b5
+# deploy-basic-8555f74595   0         0         0       42m     name=pod-label,pod-template-hash=8555f74595
+
+
+
+# -------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# 이미지를 변경해서 다시 apply 해보기
+# [ec2-user@ip-172-28-10-171 ~]$ getr
+# NAME                      DESIRED   CURRENT   READY   AGE   CONTAINERS       IMAGES         SELECTOR
+# deploy-basic-7c74db56b5   3         3         3       15m   container-name   nginx:latest   name=pod-label,pod-template-hash=7c74db56b5
+# deploy-basic-8555f74595   0         0         0       55m   container-name   nginx:latest   name=pod-label,pod-template-hash=8555f74595
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl apply -f ~/kube-workspace/deployments/
+# deployment.apps/deploy-basic configured
+# [ec2-user@ip-172-28-10-171 ~]$ getr
+# NAME                      DESIRED   CURRENT   READY   AGE   CONTAINERS       IMAGES             SELECTOR
+# deploy-basic-7c74db56b5   0         0         0       16m   container-name   nginx:latest       name=pod-label,pod-template-hash=7c74db56b5
+# deploy-basic-8555f74595   0         0         0       56m   container-name   nginx:latest       name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-fdf65858f    3         3         3       10s   container-name   httpd:alpine3.19   name=pod-label,pod-template-hash=fdf65858f
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl get rs --show-labels
+# NAME                      DESIRED   CURRENT   READY   AGE    LABELS
+# deploy-basic-7c74db56b5   0         0         0       18m    env=prod,name=pod-label,pod-template-hash=7c74db56b5
+# deploy-basic-8555f74595   0         0         0       58m    name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-fdf65858f    3         3         3       119s   app=my-app,env=prod,name=pod-label,pod-template-hash=fdf65858f
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl describe pod | grep Image: --------> image 도 잘 변경되어 있다.
+#     Image:          httpd:alpine3.19
+#     Image:          httpd:alpine3.19
+#     Image:          httpd:alpine3.19
+
+
+
+# -------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# revision
+
+
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl rollout history deploy deploy-basic
+# deployment.apps/deploy-basic 
+# REVISION  CHANGE-CAUSE
+# 1         <none>    <---------- 변화된 거 1번
+# 2         <none>    <---------- 변화된 거 1번
+# 3         <none>    <---------- 변화된 거 1번
+
+# 3번에 대한 코멘트를 남겨둠
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl annotate deploy deploy-basic kubernetes.io/change-cause="httpd:alpine3.19"
+# deployment.apps/deploy-basic annotated
+
+# 가장 최신 것의 코멘트가 남았다
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl rollout history deploy deploy-basic
+# deployment.apps/deploy-basic 
+# REVISION  CHANGE-CAUSE
+# 1         <none>
+# 2         <none>
+# 3         httpd:alpine3.19
+
+# 해당 시점으로 돌아가보기 -----> 2번 시점으로 돌아가기
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl rollout undo deploy deploy-basic --to-revision=2
+# deployment.apps/deploy-basic rolled back
+
+# 아래의 내용으로 2번의 상황으로 돌아간 것을 확인 가능함
+# [ec2-user@ip-172-28-10-171 ~]$ getr
+# NAME                      DESIRED   CURRENT   READY   AGE   CONTAINERS       IMAGES             SELECTOR
+# deploy-basic-7c74db56b5   3         3         2       31m   container-name   nginx:latest       name=pod-label,pod-template-hash=7c74db56b5
+# deploy-basic-8555f74595   0         0         0       70m   container-name   nginx:latest       name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-fdf65858f    1         1         1       14m   container-name   httpd:alpine3.19   name=pod-label,pod-template-hash=fdf65858f
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl describe pod | grep Image:
+#     Image:          nginx:latest
+#     Image:          nginx:latest
+#     Image:          nginx:latest
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl get rs --show-labels
+# NAME                      DESIRED   CURRENT   READY   AGE   LABELS
+# deploy-basic-7c74db56b5   3         3         3       31m   env=prod,name=pod-label,pod-template-hash=7c74db56b5
+# deploy-basic-8555f74595   0         0         0       71m   name=pod-label,pod-template-hash=8555f74595
+# deploy-basic-fdf65858f    0         0         0       15m   app=my-app,env=prod,name=pod-label,pod-template-hash=fdf65858f
+# [ec2-user@ip-172-28-10-171 ~]$ kubectl rollout history deploy deploy-basic
+# deployment.apps/deploy-basic 
+# REVISION  CHANGE-CAUSE
+# 1         <none>
+# 3         httpd:alpine3.19
+# 4         <none>
+
+
+# -------------------------------------------------------------------------------------------------------------------------------------------
